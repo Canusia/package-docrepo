@@ -1,0 +1,47 @@
+{% extends "cis/logged-base.html" %}
+{%block title %}{{ page_title }}{% endblock %}
+
+{% load templatehelpers %}
+
+{% block body %}
+<main>
+    {{nav|safe}}
+    
+    {{intro|safe}}
+
+    <div class="">
+        <div class="card">
+            <div class="card-body">
+                <div class="row table-responsive" style="min-height: 500px;">
+                    <div class="col-12">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th width='20%'>File</th>
+                                    <th width='80%'>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in records %}
+                                <tr>
+                                    <td><a href='{{r.media.url}}'>Download File <i class="fa fa-download"></i></a></td>
+                                    <td>
+                                        <h4>{{r.title}}</h4>
+                                        <div class="alert bg-gray-100">{{r.description|safe}}</div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">Nothing found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+{% endblock %}

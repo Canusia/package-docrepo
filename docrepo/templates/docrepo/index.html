@@ -1,0 +1,156 @@
+{% extends "cis/logged-base.html" %}
+{%block title %}{{ page_title }}{% endblock %}
+
+{% load templatehelpers %}
+
+{% load crispy_forms_tags %}
+
+{% block body %}
+<main>
+    <div class="">
+        <div class="row">
+            <div class="col-sm-6 col-xs-12">
+                <h1 class="h3 mb-4 text-gray-800"><i class="fa fa-folder"></i>&nbsp;{{ page_title }}&nbsp;
+                    <a class="btn btn-primary btn-sm small" href='{% url 'docrepo:add_new' %}'
+                        role="button"><i
+                            class="fa fa-plus"></i>&nbsp;Add New</a>
+                </h1>
+            </div>
+        </div>
+
+        <script>
+            jQuery(document).ready(function ($) {
+                var tbl_active = $('#records_active').DataTable(
+                    {
+                        'columns': [
+                            null,
+                            null,
+                            null,
+                            {
+                              'searchable': false
+                            },
+                            {
+                                'searchable': false,
+                                'orderable': false,
+                                'render': function (data, type, row, meta) {
+                                    return "<a class='btn btn-sm btn-primary' href='" +  row.ce_url + "'>View Details</a>"
+                                }
+                            }
+                        ]
+                    }
+                );
+
+                function reload_data() {
+                    tbl_active.ajax.reload(null, false);
+                    //tbl_archived.ajax.reload(null, false);
+                }
+
+                $(document).on("submit", "form#frm_add_new_item", function (event) {
+                    let ajaxurl = "{% url 'docrepo:add_new' %}"
+                    let form = this;
+
+                    $.blockUI();
+                    $.ajax({
+                        type: "POST",
+                        url: ajaxurl,
+                        data: $("form#frm_add_new_item").serialize(),
+                        success: function (response) {
+                            if (response.status == 'error') {
+                                swal(
+                                    "",
+                                    'There was an error processing your request. Please try again.',
+                                    ''
+                                )
+                                $.unblockUI();
+                                $(form).replaceWith(response.form_html)
+                            } else {
+                                $.unblockUI();
+                                swal(
+                                    "",
+                                    response.message,
+                                    'success'
+                                )
+                                $("form#frm_add_new_item")[0].reset();
+                                $("div#addNewItem").addClass('collapse');
+                                
+                                reload_data();
+                            }
+                        }
+                    });
+
+                    event.preventDefault();
+                });
+            });
+        </script>
+        
+
+        <div class="row table-responsive">
+            <div class="col-12">
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-toggle="tab" href="#active">All</a>
+                    </li>
+                    <li class="nav-item d-none">
+                        <a class="nav-link" data-toggle="tab" href="#archived">Archived</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane active " id="active">
+                        <div class="bg-white border border-top-0">
+                            <div class="col-12 pt-3 mb-3">
+                                <table id="records_active" class="table table-striped" style="width:100%"
+                                    data-server-side="true" data-ajax="api/?format=datatables&status=active">
+                                    <thead>
+                                        <tr>
+                                            <th data-data="title" data-name="title">Title
+                                            </th>
+                                            <th data-data="available_to" data-name="available_to">Available To
+                                            </th>
+                                            <th data-data="uploaded_by.first_name" data-name="uploaded_by.first_name">
+                                                Uploaded By
+                                            </th>
+                                            <th data-data="uploaded_on" data-name="uploaded_on">
+                                                Uploaded On
+                                            </th>
+                                            <th data-data="ce_url" data-name='ce_url'></th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- end tab # records_active -->
+
+                    <div class="tab-pane d-none" id="archived">
+                        <div class="bg-white border border-top-0">
+                            <div class="col-12 pt-3 mb-3">
+                                <table id="records_archive" class="table table-striped" style="width:100%"
+                                    data-server-side="true" data-ajax="api/?format=datatables&status=archived">
+                                    <thead>
+                                        <tr>
+                                            <th data-data="title" data-name="title">Title
+                                            </th>
+                                            <th data-data="applies_to" data-name="applies_to">Applies To
+                                            </th>
+                                            <th data-data="valid_from">Valid From</th>
+                                            <th data-data="valid_until">Valid Until</th>
+                                            <th data-data="display_weight" data-name="display_weight">
+                                                Display Weight
+                                            </th>
+                                            <th data-data="id" data-name='id'>Action</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- end tab # records_archive -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+{% endblock %}
