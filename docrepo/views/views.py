@@ -41,7 +41,8 @@ class DocRepoViewSet(viewsets.ReadOnlyModelViewSet):
 
 @user_passes_test(user_has_faculty_role, login_url='/')
 def show_links_for_faculty(request):
-    from cis.settings.faculty_portal import faculty_portal as portal_lang
+    from ..faculty_portal import faculty_portal_setting
+    portal_lang = faculty_portal_setting()
     
     menu = draw_menu(FACULTY_MENU, 'docrepo', '', 'faculty')
     template = 'docrepo/student/index.html'
