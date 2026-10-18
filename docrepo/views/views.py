@@ -41,7 +41,7 @@ class DocRepoViewSet(viewsets.ReadOnlyModelViewSet):
 
 @user_passes_test(user_has_faculty_role, login_url='/')
 def show_links_for_faculty(request):
-    from cis.settings.faculty_portal import faculty_portal as portal_lang
+    from ..portal_text import portal_text
     
     menu = draw_menu(FACULTY_MENU, 'docrepo', '', 'faculty')
     template = 'docrepo/student/index.html'
@@ -54,14 +54,14 @@ def show_links_for_faculty(request):
             'page_title': 'Documents',
             'menu': menu,
             'nav': '<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/">Home</a></li><li class="breadcrumb-item active" aria-current="page">Shared Docs.</li></ol></nav>',
-            'intro': portal_lang(request).from_db().get('docrepo_blurb', 'Change me'),
+            'intro': portal_text('faculty').get('docrepo_blurb', 'Change me'),
             'records': records
             }
         )
 
 @user_passes_test(user_has_instructor_role, login_url='/')
 def show_links_for_instructor(request):
-    from cis.settings.instructor_portal import instructor_portal as portal_lang
+    from ..portal_text import portal_text
     
     menu = draw_menu(INSTRUCTOR_MENU, 'docrepo', '', 'instructor')
     template = 'docrepo/student/index.html'
@@ -74,7 +74,7 @@ def show_links_for_instructor(request):
             'page_title': 'Documents',
             'menu': menu,
             'nav': '<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/instructor">Home</a></li><li class="breadcrumb-item active" aria-current="page">Shared Docs.</li></ol></nav>',
-            'intro': portal_lang(request).from_db().get('docrepo_blurb', 'Change me'),
+            'intro': portal_text('instructor').get('docrepo_blurb', 'Change me'),
             'records': records
             }
         )
