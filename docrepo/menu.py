@@ -14,3 +14,7 @@ if menu is not None:
                   url='faculty_docrepo:docs', icon='fas fa-fw fa-folder', order=70)
     menu.register('instructor', 'docrepo', 'Shared Docs.',
                   url='instructor_docrepo:docs', icon='fas fa-fw fa-folder', order=80)
+
+# The student and HS admin Documents items are registered hidden by the
+# @menu.item decorators on their views; importing the module runs them.
+from .views import views as _views  # noqa: E402,F401

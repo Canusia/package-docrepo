@@ -51,6 +51,22 @@ class DocRepo(models.Model):
         return self.title
 
     @property
+    def file_link(self):
+        """Permanent link to the file (docrepo_files:open), or None when the
+        host has not mounted it."""
+        from django.urls import NoReverseMatch, reverse
+        try:
+            return reverse('docrepo_files:open', kwargs={'record_id': self.id})
+        except NoReverseMatch:
+            return None
+
+    @property
+    def download_url(self):
+        """What portal lists link to: the permanent link when mounted, else
+        the signed (expiring) storage URL."""
+        return self.file_link or self.media.url
+
+    @property
     def ce_url(self):
         return reverse_lazy('docrepo:doc', kwargs={
             'record_id': self.id})

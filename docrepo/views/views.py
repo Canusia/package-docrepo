@@ -4,7 +4,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.template.context_processors import csrf
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden, JsonResponse
 
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
@@ -17,7 +18,8 @@ from cis.utils import (
     user_has_cis_role, user_has_student_role,
     user_has_highschool_admin_role,
     user_has_instructor_role,
-    user_has_faculty_role
+    user_has_faculty_role,
+    CIS_user_only,
 )
 
 from cis.menu import (
@@ -25,12 +27,27 @@ from cis.menu import (
 )
 
 from ..models.model import DocRepo
+from ..access import can_open
+
+try:   # cis.menu_registry: register portal pages with the sidebar registry
+    from cis.menu_registry import menu as _menu
+except ImportError:   # cis without the registry
+    _menu = None
+
+
+def _menu_item(*args, **kwargs):
+    """`menu.item` when cis has the registry, else a no-op decorator."""
+    if _menu is None:
+        return lambda view: view
+    return _menu.item(*args, **kwargs)
 from ..forms.docrepo import DocRepoForm
 
 from ..serializers import DocRepoSerializer
 
 class DocRepoViewSet(viewsets.ReadOnlyModelViewSet):
+    """CE's document table. Every document, so CE only."""
     serializer_class = DocRepoSerializer
+    permission_classes = [CIS_user_only]
 
     def get_queryset(self):
         from datetime import datetime
@@ -79,22 +96,29 @@ def show_links_for_instructor(request):
             }
         )
 
+# Added hidden (default_visible=False): CE turns them on in the menu editor.
+@_menu_item('highschool_admin', 'docrepo', 'Documents',
+            url='highschool_admin_docrepo:docs', icon='fas fa-fw fa-folder',
+            order=105, default_visible=False)
 @user_passes_test(user_has_highschool_admin_role, login_url='/')
 def show_links_for_highschool_admin(request):
     menu = draw_menu(HS_ADMIN_MENU, 'docrepo', '', 'highschool_admin')
     template = 'docrepo/student/index.html'
 
-    records = get_documents(request, 'High School Administrators')
+    records = get_documents(request, 'highschool_admin')
 
     return render(
         request,
         template, {
             'page_title': 'Documents',
             'menu': menu,
+            'nav': '<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/highschool_admin/">Home</a></li><li class="breadcrumb-item active" aria-current="page">Documents</li></ol></nav>',
             'records': records
             }
         )
 
+@_menu_item('student', 'docrepo', 'Documents', url='student_docrepo:docs',
+            icon='fas fa-fw fa-folder', order=55, default_visible=False)
 @user_passes_test(user_has_student_role, login_url='/')
 def show_links_for_student(request):
     menu = draw_menu(STUDENT_MENU, 'docrepo', '', 'student')
@@ -112,14 +136,10 @@ def show_links_for_student(request):
         )
 
 def get_documents(request, user_role='student'):
-    if user_role == 'student':
-        available_to = 'Students'
-    elif user_role == 'highschool_admin':
-        available_to = 'High School Administrators'
-    elif user_role == 'instructor':
-        available_to = 'Instructors'
-    elif user_role == 'faculty':
-        available_to = 'Faculty'
+    from ..access import ROLE_LABELS
+    available_to = ROLE_LABELS.get(user_role)
+    if available_to is None:
+        return DocRepo.objects.none()
 
     records = DocRepo.objects.filter(
         available_to__contains=available_to
@@ -184,7 +204,11 @@ def detail(request, record_id):
                 'all_items': 'docrepo:all'
             },
             'menu': draw_menu(cis_menu, 'docrepo', 'all'),
-            'record': record
+            'record': record,
+            'file_link': (request.build_absolute_uri(record.file_link)
+                          if record.file_link else None),
+            'shared_with_hs_admins': 'High School Administrators' in set(
+                record.available_to or ()),
         })
 
 @user_passes_test(user_has_cis_role, login_url='/')
@@ -251,3 +275,17 @@ def add_new(request):
             'page_title': 'Add New Document'
         }
     )
+
+@login_required
+def open_file(request, record_id):
+    """Permanent link to a document's file (docrepo_files:open).
+
+    The file itself is private storage, so its URL is signed and expires;
+    this link never does. It checks the viewer can see the document, then
+    redirects to a freshly signed URL.
+    """
+    record = get_object_or_404(DocRepo, pk=record_id)
+    if not can_open(request.user, record):
+        return HttpResponseForbidden(
+            'This document is not shared with your role.')
+    return redirect(record.media.url)

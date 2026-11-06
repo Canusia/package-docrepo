@@ -75,6 +75,26 @@
                     </div>
                 </div>
             </div>
+            {% if file_link %}
+            <div class="col-md-12 col-sm-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Link to this file</h5>
+                        <p class="small text-muted mb-2">This link does not expire. Paste it anywhere people sign in to MyCE &mdash; for example a support request type description.</p>
+                        <div class="input-group input-group-sm mb-2">
+                            <input type="text" class="form-control" id="docrepo_file_link" value="{{ file_link }}" readonly>
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-primary" type="button" id="docrepo_copy_link">Copy</button>
+                            </div>
+                        </div>
+                        <p class="small mb-0">
+                            Who can open it: CE staff{% for label in record.available_to %}, {{ label }}{% endfor %}.
+                            {% if not shared_with_hs_admins %}<br><span class="text-warning">To use this link in a High School Administrators request type, tick High School Administrators under Available To.</span>{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             <div class="col-md-8 col-sm-12 d-none">
                 <div class="card mb-4">
                 </div>
@@ -83,6 +103,18 @@
 
         <script>
             jQuery(document).ready(function($) {
+                $("#docrepo_copy_link").on("click", function() {
+                    var input = document.getElementById("docrepo_file_link");
+                    input.select();
+                    var done = function() { $("#docrepo_copy_link").text("Copied"); };
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(input.value).then(done, function() {
+                            document.execCommand("copy"); done();
+                        });
+                    } else {
+                        document.execCommand("copy"); done();
+                    }
+                });
                 $("input.delete").on("click", function() {
                     if(!confirm("Are you sure you want to permanently delete this record?"))
                         return;
