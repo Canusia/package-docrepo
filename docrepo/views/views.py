@@ -1,10 +1,9 @@
 from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib import messages
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.template.context_processors import csrf
 from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, JsonResponse
 
 from rest_framework import viewsets
@@ -29,6 +28,10 @@ from cis.menu import (
 from ..models.model import DocRepo
 from ..access import can_open
 
+from ..forms.docrepo import DocRepoForm
+
+from ..serializers import DocRepoSerializer
+
 try:   # cis.menu_registry: register portal pages with the sidebar registry
     from cis.menu_registry import menu as _menu
 except ImportError:   # cis without the registry
@@ -40,9 +43,6 @@ def _menu_item(*args, **kwargs):
     if _menu is None:
         return lambda view: view
     return _menu.item(*args, **kwargs)
-from ..forms.docrepo import DocRepoForm
-
-from ..serializers import DocRepoSerializer
 
 class DocRepoViewSet(viewsets.ReadOnlyModelViewSet):
     """CE's document table. Every document, so CE only."""
