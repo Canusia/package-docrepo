@@ -82,9 +82,11 @@
                         // must send a real key: data:null stops rest_framework_datatables reading columns
                         { data: 'id', orderable: false, searchable: false, className: 'select-checkbox',
                           render: function () { return ''; } },
-                        { data: 'title', name: 'title' },
-                        { data: 'available_to', name: 'available_to' },
-                        { data: 'uploaded_by.first_name', name: 'uploaded_by.first_name' },
+                        // CE-typed text: render as text, not HTML
+                        { data: 'title', name: 'title', render: $.fn.dataTable.render.text() },
+                        { data: 'available_to', name: 'available_to', render: $.fn.dataTable.render.text() },
+                        { data: 'uploaded_by.first_name', name: 'uploaded_by.first_name',
+                          render: $.fn.dataTable.render.text() },
                         { data: 'uploaded_on', name: 'uploaded_on', searchable: false },
                         { data: 'ce_url', name: 'ce_url', searchable: false, orderable: false,
                           render: function (data, type, row) {
@@ -106,6 +108,13 @@
                     var first = null;
                     $.each(errors, function (name, list) {
                         var $input = $form.find("[name='" + name + "']");
+                        if (!$input.length) {   // form-level (__all__) errors: show above the form
+                            $.each(list, function (_, err) {
+                                $('<div class="alert alert-danger docrepo-error"></div>')
+                                    .text(err.message).prependTo($form);
+                            });
+                            return;
+                        }
                         // a drop zone hides its input; show the error under the zone
                         var $anchor = $input.closest('.hs-dropzone').length ? $input.closest('.hs-dropzone') : $input.last();
                         $input.addClass('is-invalid');

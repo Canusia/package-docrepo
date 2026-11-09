@@ -17,8 +17,9 @@ Django app providing the CE-managed shared document library for the MyCE platfor
 docrepo/            ← Django app
   apps.py           ← DocRepoConfig (prod) + DevDocRepoConfig (dev)
   models/model.py   ← DocRepo model (UUID pk, PrivateMediaStorage FileField)
-  forms/docrepo.py  ← DocRepoForm
-  views/views.py    ← CE CRUD + per-role read-only lists + DocRepoViewSet
+  forms/docrepo.py  ← DocRepoForm + DropzoneFileInput
+  actions.py        ← docrepo_actions ActionRegistry (Copy Links bulk action)
+  views/views.py    ← CE CRUD + bulk_actions + per-role read-only lists + DocRepoViewSet
   serializers.py    ← DocRepoSerializer (DataTables)
   urls/
     ce.py                ← app_name 'docrepo'
@@ -27,9 +28,10 @@ docrepo/            ← Django app
     faculty.py           ← app_name 'faculty_docrepo'
     highschool_admin.py  ← app_name 'highschool_admin_docrepo' (not mounted by EWU)
   templates/docrepo/
-    index.html, details.html, add_new.html, links.html
+    index.html, details.html, add_new.html, links.html, _copy_links_modal.html
     student/index.html            ← reused by student, instructor, faculty, HS admin
     highschool_admin/*.html
+  static/docrepo/js/  ← file_dropzone.js, copy_link.js
   migrations/0001_initial.py
 ```
 

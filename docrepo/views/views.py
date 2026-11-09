@@ -1,8 +1,5 @@
-from django.db import IntegrityError
-from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.template.context_processors import csrf
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import (
     HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse,
@@ -12,7 +9,6 @@ from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from crispy_forms.utils import render_crispy_form
 
 from cis.models.settings import Setting
 from cis.utils import (
