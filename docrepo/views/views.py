@@ -4,7 +4,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.template.context_processors import csrf
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import (
+    HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse,
+)
 
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
@@ -31,6 +33,7 @@ from ..access import can_open
 from ..forms.docrepo import DocRepoForm
 
 from ..serializers import DocRepoSerializer
+from ..actions import absolute_file_link, docrepo_actions
 
 try:   # cis.menu_registry: register portal pages with the sidebar registry
     from cis.menu_registry import menu as _menu
@@ -179,7 +182,7 @@ def detail(request, record_id):
     record = get_object_or_404(DocRepo, pk=record_id)
 
     if request.method == 'POST':
-        form = DocRepoForm(request.POST, instance=record)
+        form = DocRepoForm(request.POST, request.FILES, instance=record)
 
         if form.is_valid():
             form.save(commit=True)
@@ -205,8 +208,8 @@ def detail(request, record_id):
             },
             'menu': draw_menu(cis_menu, 'docrepo', 'all'),
             'record': record,
-            'file_link': (request.build_absolute_uri(record.file_link)
-                          if record.file_link else None),
+            'form_assets': form.media,
+            'file_link': absolute_file_link(request, record),
             'shared_with_hs_admins': 'High School Administrators' in set(
                 record.available_to or ()),
         })
@@ -218,6 +221,7 @@ def index(request):
     '''
     menu = draw_menu(cis_menu, 'docrepo', 'all')
     template = 'docrepo/index.html'
+    add_new_form = DocRepoForm()
     
     return render(
         request,
@@ -228,27 +232,48 @@ def index(request):
                 'add_new': 'docrepo:all'
             },
             'menu': menu,
-            'add_new_form': DocRepoForm
+            'add_new_form': add_new_form,
+            'form_assets': add_new_form.media,
+            'bulk_actions': docrepo_actions.for_scope('bulk', request.user),
             }
         )
+
+
+@user_passes_test(user_has_cis_role, login_url='/')
+def bulk_actions(request):
+    """Dispatch point for the documents table's bulk actions."""
+    slug = request.POST.get('action') or request.GET.get('action')
+    known = {s for group in docrepo_actions.for_scope('bulk').values() for s in group['actions']}
+    if slug not in known:
+        # unknown action before the POST-only check, as cis's bulk endpoints do
+        return JsonResponse({'status': 'error', 'message': 'Unknown action.'}, status=400)
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    return docrepo_actions.dispatch(request, slug)
 
 @user_passes_test(user_has_cis_role, login_url='/')
 def add_new(request):
     """
-    Add new for CE Staff
+    Add new for CE Staff. The documents page's Add New panel posts here with
+    AJAX and gets JSON back; a plain post (the standalone page) redirects to
+    the new document.
     """
-    ajax = request.GET.get('ajax', None)
-    
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
     if request.method == 'POST':
-        """
-        Add New
-        """
         form = DocRepoForm(request.POST, request.FILES)
 
         if form.is_valid():
             record = form.save(commit=False)
             record.uploaded_by = request.user
             record.save()
+
+            if is_ajax:
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'Added "{record.title}".',
+                    'ce_url': str(record.ce_url),
+                })
 
             messages.add_message(
                 request,
@@ -257,6 +282,12 @@ def add_new(request):
                 'list-group-item-success'
             )
             return redirect('docrepo:doc', record_id=record.id)
+
+        if is_ajax:
+            return JsonResponse({
+                'message': 'Please correct the errors and try again.',
+                'errors': form.errors.as_json(),
+            }, status=400)
     else:
         form = DocRepoForm()
 
@@ -266,6 +297,7 @@ def add_new(request):
         {
             'base_template':'cis/logged-base.html',
             'form': form,
+            'form_assets': form.media,
             'urls': {
                 'all_items': 'docrepo:all'
             },

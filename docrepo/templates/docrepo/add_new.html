@@ -2,13 +2,11 @@
 
 {%block title %}{{ page_title }}{% endblock %}
 
+{% load static %}
 {% load templatehelpers %}
 {% load crispy_forms_tags %}
 
 {% block body %}
-<script>
-   
-</script>
 {% if ajax != '1' %}
 <div class="">
     <div class="row">
@@ -25,9 +23,6 @@
         </ol>
     </nav>
 </div>
-{% else %}
-<script>
-</script>
 {% endif %}
 
 {% if ajax != '1' %}
@@ -48,6 +43,7 @@
                             </ul>
                             {% endif %}
                         </div>
+                        {{ form_assets }}
                         <form action="" id="form_cohort_add_new" enctype="multipart/form-data" method="post">
                             {% csrf_token %}
                             {{ form | crispy }}
@@ -62,4 +58,5 @@
 </main>
 {% endif %}
 
+<script src="{% static 'docrepo/js/file_dropzone.js' %}"></script>
 {% endblock %}

@@ -1,6 +1,7 @@
 {% extends "cis/logged-base.html" %}
 {%block title %}{{ page_title }}{% endblock %}
 
+{% load static %}
 {% load templatehelpers %}
 
 {% load crispy_forms_tags %}
@@ -11,78 +12,153 @@
         <div class="row">
             <div class="col-sm-6 col-xs-12">
                 <h1 class="h3 mb-4 text-gray-800"><i class="fa fa-folder"></i>&nbsp;{{ page_title }}&nbsp;
-                    <a class="btn btn-primary btn-sm small" href='{% url 'docrepo:add_new' %}'
-                        role="button"><i
+                    <a class="btn btn-primary btn-sm small collapsed" data-toggle="collapse" href="#addNewItem"
+                        role="button" aria-expanded="false" aria-controls="addNewItem"><i
                             class="fa fa-plus"></i>&nbsp;Add New</a>
                 </h1>
             </div>
         </div>
 
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="collapse multi-collapse" id="addNewItem">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Add New Document</h4>
+                            {{ form_assets }}
+                            <form action="{% url 'docrepo:add_new' %}" method="post" enctype="multipart/form-data"
+                                id="frm_add_new_item">
+                                {% csrf_token %}
+                                {{ add_new_form | crispy }}
+                                <input type="submit" class="btn btn-primary btn-sm" value="Add Document">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="{% static 'docrepo/js/file_dropzone.js' %}"></script>
+        <script src="{% static 'docrepo/js/copy_link.js' %}"></script>
         <script>
             jQuery(document).ready(function ($) {
-                var tbl_active = $('#records_active').DataTable(
+                var bulkUrl = "{% url 'docrepo:bulk_actions' %}";
+                var bulkActions = [
+                    {% for group_key, group in bulk_actions.items %}{% for slug, action in group.actions.items %}
                     {
-                        'columns': [
-                            null,
-                            null,
-                            null,
-                            {
-                              'searchable': false
-                            },
-                            {
-                                'searchable': false,
-                                'orderable': false,
-                                'render': function (data, type, row, meta) {
-                                    return "<a class='btn btn-sm btn-primary' href='" +  row.ce_url + "'>View Details</a>"
-                                }
-                            }
-                        ]
-                    }
-                );
+                        slug: '{{ slug|escapejs }}',
+                        label: '{{ action.label|escapejs }}',
+                        icon: '{{ action.icon|default:"fas fa-edit"|escapejs }}',
+                        btnClass: '{{ action.btn_class|default:"btn-primary"|escapejs }}',
+                        confirm: {% if action.confirm %}'{{ action.confirm|escapejs }}'{% else %}null{% endif %},
+                    },
+                    {% endfor %}{% endfor %}
+                ];
 
-                function reload_data() {
-                    tbl_active.ajax.reload(null, false);
-                    //tbl_archived.ajax.reload(null, false);
+                var buttons = [
+                    { extend: 'csv', className: 'btn btn-sm btn-primary text-white',
+                      text: '<i class="fas fa-file-csv"></i>&nbsp;CSV',
+                      exportOptions: { columns: ':not(:first-child):not(:last-child)' } },
+                ];
+                bulkActions.forEach(function (spec) {
+                    buttons.push({
+                        className: 'btn btn-sm ' + spec.btnClass + ' text-white',
+                        text: '<i class="' + spec.icon + '"></i>&nbsp;' + spec.label,
+                        titleAttr: spec.label,
+                        action: function (e, dt) {
+                            if (spec.confirm && !confirm(spec.confirm)) return;
+                            window.ActionRegistry.doBulkAction(bulkUrl, spec.slug, dt);
+                        },
+                    });
+                });
+
+                var tbl_active = $('#documents_table').DataTable({
+                    dom: 'lBfrtip',
+                    rowId: 'id',
+                    select: { style: 'multi', selector: 'td:first-child' },
+                    buttons: buttons,
+                    order: [[1, 'asc']],
+                    columns: [
+                        // must send a real key: data:null stops rest_framework_datatables reading columns
+                        { data: 'id', orderable: false, searchable: false, className: 'select-checkbox',
+                          render: function () { return ''; } },
+                        { data: 'title', name: 'title' },
+                        { data: 'available_to', name: 'available_to' },
+                        { data: 'uploaded_by.first_name', name: 'uploaded_by.first_name' },
+                        { data: 'uploaded_on', name: 'uploaded_on', searchable: false },
+                        { data: 'ce_url', name: 'ce_url', searchable: false, orderable: false,
+                          render: function (data, type, row) {
+                              return "<a class='btn btn-sm btn-primary' href='" + row.ce_url + "'>View Details</a>";
+                          } },
+                    ],
+                });
+
+                var $form = $('form#frm_add_new_item');
+                var $submit = $form.find('[type=submit]');
+                var submitLabel = $submit.val();
+
+                function clearErrors() {
+                    $form.find('.is-invalid').removeClass('is-invalid');
+                    $form.find('.docrepo-error').remove();
                 }
 
-                $(document).on("submit", "form#frm_add_new_item", function (event) {
-                    let ajaxurl = "{% url 'docrepo:add_new' %}"
-                    let form = this;
+                function showErrors(errors) {
+                    var first = null;
+                    $.each(errors, function (name, list) {
+                        var $input = $form.find("[name='" + name + "']");
+                        // a drop zone hides its input; show the error under the zone
+                        var $anchor = $input.closest('.hs-dropzone').length ? $input.closest('.hs-dropzone') : $input.last();
+                        $input.addClass('is-invalid');
+                        $.each(list, function (_, err) {
+                            $('<div class="invalid-feedback d-block docrepo-error"></div>')
+                                .text(err.message).insertAfter($anchor);
+                        });
+                        if (!first) first = $input;
+                    });
+                    if (first) first.focus();
+                }
 
-                    $.blockUI();
+                $form.on('submit', function (event) {
+                    event.preventDefault();
+                    if ($submit.prop('disabled')) return false;   // no double upload
+                    clearErrors();
+                    if (window.tinymce) window.tinymce.triggerSave();   // description is TinyMCE
+
+                    $submit.prop('disabled', true).val('Saving...');
                     $.ajax({
-                        type: "POST",
-                        url: ajaxurl,
-                        data: $("form#frm_add_new_item").serialize(),
+                        type: 'POST',
+                        url: $form.attr('action'),
+                        data: new FormData(this),
+                        processData: false,
+                        contentType: false,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         success: function (response) {
-                            if (response.status == 'error') {
-                                swal(
-                                    "",
-                                    'There was an error processing your request. Please try again.',
-                                    ''
-                                )
-                                $.unblockUI();
-                                $(form).replaceWith(response.form_html)
-                            } else {
-                                $.unblockUI();
-                                swal(
-                                    "",
-                                    response.message,
-                                    'success'
-                                )
-                                $("form#frm_add_new_item")[0].reset();
-                                $("div#addNewItem").addClass('collapse');
-                                
-                                reload_data();
-                            }
+                            $submit.prop('disabled', false).val(submitLabel);
+                            swal({ title: 'Success', text: response.message, icon: 'success' });
+                            $form[0].reset();
+                            if (window.tinymce && tinymce.get('id_description')) tinymce.get('id_description').setContent('');
+                            var file = $form.find('input[type=file]')[0];
+                            if (file) file.dispatchEvent(new Event('change', { bubbles: true }));   // reset the drop zone
+                            $('#addNewItem').collapse('hide');
+                            tbl_active.ajax.reload(null, false);
+                        },
+                        error: function (xhr) {
+                            $submit.prop('disabled', false).val(submitLabel);
+                            var body = xhr.responseJSON || {};
+                            var errors = null;
+                            try { errors = JSON.parse(body.errors); } catch (e) { errors = null; }
+                            if (errors && typeof errors === 'object') showErrors(errors);
+                            swal({
+                                title: 'Unable to save',
+                                text: body.message || 'Something went wrong. Please refresh the page and try again.',
+                                icon: 'warning'
+                            });
                         }
                     });
-
-                    event.preventDefault();
+                    return false;
                 });
             });
         </script>
-        
 
         <div class="row table-responsive">
             <div class="col-12">
@@ -90,62 +166,28 @@
                     <li class="nav-item">
                         <a class="nav-link active" data-toggle="tab" href="#active">All</a>
                     </li>
-                    <li class="nav-item d-none">
-                        <a class="nav-link" data-toggle="tab" href="#archived">Archived</a>
-                    </li>
                 </ul>
 
                 <div class="tab-content">
                     <div class="tab-pane active " id="active">
                         <div class="bg-white border border-top-0">
                             <div class="col-12 pt-3 mb-3">
-                                <table id="records_active" class="table table-striped" style="width:100%"
+                                <table id="documents_table" class="table table-striped" style="width:100%"
                                     data-server-side="true" data-ajax="api/?format=datatables&status=active">
                                     <thead>
                                         <tr>
-                                            <th data-data="title" data-name="title">Title
-                                            </th>
-                                            <th data-data="available_to" data-name="available_to">Available To
-                                            </th>
-                                            <th data-data="uploaded_by.first_name" data-name="uploaded_by.first_name">
-                                                Uploaded By
-                                            </th>
-                                            <th data-data="uploaded_on" data-name="uploaded_on">
-                                                Uploaded On
-                                            </th>
-                                            <th data-data="ce_url" data-name='ce_url'></th>
+                                            <th></th>
+                                            <th>Title</th>
+                                            <th>Available To</th>
+                                            <th>Uploaded By</th>
+                                            <th>Uploaded On</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                 </table>
                             </div>
                         </div>
                     </div>
-                    <!-- end tab # records_active -->
-
-                    <div class="tab-pane d-none" id="archived">
-                        <div class="bg-white border border-top-0">
-                            <div class="col-12 pt-3 mb-3">
-                                <table id="records_archive" class="table table-striped" style="width:100%"
-                                    data-server-side="true" data-ajax="api/?format=datatables&status=archived">
-                                    <thead>
-                                        <tr>
-                                            <th data-data="title" data-name="title">Title
-                                            </th>
-                                            <th data-data="applies_to" data-name="applies_to">Applies To
-                                            </th>
-                                            <th data-data="valid_from">Valid From</th>
-                                            <th data-data="valid_until">Valid Until</th>
-                                            <th data-data="display_weight" data-name="display_weight">
-                                                Display Weight
-                                            </th>
-                                            <th data-data="id" data-name='id'>Action</th>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- end tab # records_archive -->
                 </div>
             </div>
         </div>

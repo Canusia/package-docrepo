@@ -1,0 +1,33 @@
+{% comment %}
+  Copy Links bulk action (actions.copy_links), loaded into the shared
+  #bulk_modal_content (cis/logged-base.html), which already has a close
+  button. Copy buttons are handled by docrepo/js/copy_link.js, which the
+  documents page loads; no script here.
+{% endcomment %}
+<div class="card">
+    <div class="card-body">
+        <h3 class="card-title">Links to the selected documents</h3>
+        {% if not rows %}
+        <p class="mb-0">None of the selected documents were found. Reload the page and try again.</p>
+        {% elif not links_available %}
+        <p class="alert alert-warning mb-0">Permanent file links are not available on this site yet, so there is nothing to copy. Ask Canusia support to turn them on.</p>
+        {% else %}
+        <p class="small text-muted">These links do not expire. Paste them anywhere people sign in to MyCE &mdash; for example a support request type description.</p>
+        {% for row in rows %}
+        <div class="mb-3">
+            <label class="mb-1" for="docrepo_link_{{ forloop.counter }}">{{ row.record.title }}</label>
+            <div class="input-group input-group-sm">
+                <input type="text" class="form-control" id="docrepo_link_{{ forloop.counter }}" value="{{ row.link }}" readonly>
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-outline-primary" data-docrepo-copy="#docrepo_link_{{ forloop.counter }}">Copy</button>
+                </div>
+            </div>
+            {% if not row.shared_with_hs_admins %}<small class="text-warning">Not shared with High School Administrators.</small>{% endif %}
+        </div>
+        {% endfor %}
+        <textarea id="docrepo_all_links" class="sr-only" readonly aria-hidden="true" tabindex="-1">{{ all_links }}</textarea>
+        <button type="button" class="btn btn-primary btn-sm" data-docrepo-copy="#docrepo_all_links" data-copied-label="Copied all"><i class="fas fa-copy"></i>&nbsp;Copy all</button>
+        {% endif %}
+        <button type="button" class="btn btn-sm" data-dismiss="modal">Close</button>
+    </div>
+</div>

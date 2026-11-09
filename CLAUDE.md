@@ -63,5 +63,15 @@ is the exact bug that had to be fixed after the `class_visit` extraction.
 - `INSTALLED_APPS` entry via the `find_spec('docrepo.docrepo')` conditional.
 - Four URL includes (`ce`, `instructor`, `student`, `faculty`) via a `_dr` prefix alias.
 - The package ships **no** `staticfiles/` directory — nothing to add to `STATICFILES_DIRS`.
+  Its JS lives in the app's `static/docrepo/js/` (`file_dropzone.js`, `copy_link.js`),
+  found by the default `AppDirectoriesFinder`; `MANIFEST.in` ships it.
+- `myce.component_registry.ActionRegistry` for the documents table's bulk actions
+  (`actions.py`, endpoint `docrepo:bulk_actions`).
 - Depends on host app `cis` for `storage_backend`, `utils` role predicates, `menu`, and
   `settings.*_portal`.
+
+## Gotcha: the form field is called `media`
+
+In a template, `{{ form.media }}` does a dict lookup first and renders the **file field**,
+not the form's JS/CSS (TinyMCE). Views pass `form.media` as `form_assets`; use
+`{{ form_assets }}`.

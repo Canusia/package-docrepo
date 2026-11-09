@@ -6,6 +6,7 @@ recursive-include docrepo/models *
 recursive-include docrepo/urls *
 recursive-include docrepo/views *
 recursive-include docrepo/templates *
+recursive-include docrepo/static *
 recursive-include docrepo/migrations *
 global-exclude *.py[cod]
 global-exclude __pycache__/*

@@ -4,6 +4,7 @@
 {% load templatehelpers %}
 {% load crispy_forms_tags %}
 
+{% load static %}
 {% block body %}
 <script>
     jQuery(function ($) {
@@ -65,7 +66,8 @@
                                     {% endfor %}
                             </ul>
                             {% endif %}
-                            <form action="" method="post">
+                            {{ form_assets }}
+                            <form action="" method="post" enctype="multipart/form-data">
                                 {% csrf_token %}
                                 {{ form | crispy }}
                                 <input type="submit" class="btn btn-primary btn-sm" value="Update">&nbsp;
@@ -84,7 +86,7 @@
                         <div class="input-group input-group-sm mb-2">
                             <input type="text" class="form-control" id="docrepo_file_link" value="{{ file_link }}" readonly>
                             <div class="input-group-append">
-                                <button class="btn btn-outline-primary" type="button" id="docrepo_copy_link">Copy</button>
+                                <button class="btn btn-outline-primary" type="button" id="docrepo_copy_link" data-docrepo-copy="#docrepo_file_link">Copy</button>
                             </div>
                         </div>
                         <p class="small mb-0">
@@ -101,20 +103,10 @@
             </div>
         </div>
 
+        <script src="{% static 'docrepo/js/copy_link.js' %}"></script>
+        <script src="{% static 'docrepo/js/file_dropzone.js' %}"></script>
         <script>
             jQuery(document).ready(function($) {
-                $("#docrepo_copy_link").on("click", function() {
-                    var input = document.getElementById("docrepo_file_link");
-                    input.select();
-                    var done = function() { $("#docrepo_copy_link").text("Copied"); };
-                    if (navigator.clipboard) {
-                        navigator.clipboard.writeText(input.value).then(done, function() {
-                            document.execCommand("copy"); done();
-                        });
-                    } else {
-                        document.execCommand("copy"); done();
-                    }
-                });
                 $("input.delete").on("click", function() {
                     if(!confirm("Are you sure you want to permanently delete this record?"))
                         return;

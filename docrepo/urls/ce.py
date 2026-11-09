@@ -5,7 +5,7 @@ from django.urls import path, include
 from rest_framework import routers
 
 from ..views.views import (
-    index, detail, add_new, delete,
+    index, detail, add_new, delete, bulk_actions,
     DocRepoViewSet
 )
 
@@ -19,6 +19,7 @@ urlpatterns = [
     path('document/<uuid:record_id>', detail, name='doc'),
     path('document/add_new', add_new, name='add_new'),
     path('document/delete/<uuid:record_id>', delete, name='delete'),
+    path('bulk_actions', bulk_actions, name='bulk_actions'),
 
     path('api/', include(router.urls)),
 ]
