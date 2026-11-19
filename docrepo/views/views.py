@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.html import escape
 from django.http import (
     HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse,
 )
@@ -37,6 +38,22 @@ except ImportError:   # cis without the registry
     _menu = None
 
 
+def _breadcrumb(home_url, label):
+    return (
+        '<nav aria-label="breadcrumb"><ol class="breadcrumb">'
+        f'<li class="breadcrumb-item"><a href="{home_url}">Home</a></li>'
+        f'<li class="breadcrumb-item active" aria-current="page">{escape(label)}</li>'
+        '</ol></nav>')
+
+
+def _headings(role, breadcrumb_default):
+    """(page_title, breadcrumb label): the renamed menu label when CE set
+    one, else the page's historical text (#3)."""
+    from ..portal_text import page_heading
+    renamed = page_heading(role, None)
+    return (renamed or 'Documents', renamed or breadcrumb_default)
+
+
 def _menu_item(*args, **kwargs):
     """`menu.item` when cis has the registry, else a no-op decorator."""
     if _menu is None:
@@ -63,13 +80,14 @@ def show_links_for_faculty(request):
     template = 'docrepo/student/index.html'
 
     records = get_documents(request, 'faculty')
+    page_title, crumb = _headings('faculty', 'Shared Docs.')
 
     return render(
         request,
         template, {
-            'page_title': 'Documents',
+            'page_title': page_title,
             'menu': menu,
-            'nav': '<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/">Home</a></li><li class="breadcrumb-item active" aria-current="page">Shared Docs.</li></ol></nav>',
+            'nav': _breadcrumb('/', crumb),
             'intro': portal_text('faculty').get('docrepo_blurb', 'Change me'),
             'records': records
             }
@@ -83,13 +101,14 @@ def show_links_for_instructor(request):
     template = 'docrepo/student/index.html'
 
     records = get_documents(request, 'instructor')
+    page_title, crumb = _headings('instructor', 'Shared Docs.')
 
     return render(
         request,
         template, {
-            'page_title': 'Documents',
+            'page_title': page_title,
             'menu': menu,
-            'nav': '<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/instructor">Home</a></li><li class="breadcrumb-item active" aria-current="page">Shared Docs.</li></ol></nav>',
+            'nav': _breadcrumb('/instructor', crumb),
             'intro': portal_text('instructor').get('docrepo_blurb', 'Change me'),
             'records': records
             }
@@ -105,13 +124,14 @@ def show_links_for_highschool_admin(request):
     template = 'docrepo/student/index.html'
 
     records = get_documents(request, 'highschool_admin')
+    page_title, crumb = _headings('highschool_admin', 'Documents')
 
     return render(
         request,
         template, {
-            'page_title': 'Documents',
+            'page_title': page_title,
             'menu': menu,
-            'nav': '<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/highschool_admin/">Home</a></li><li class="breadcrumb-item active" aria-current="page">Documents</li></ol></nav>',
+            'nav': _breadcrumb('/highschool_admin/', crumb),
             'records': records
             }
         )
@@ -124,11 +144,12 @@ def show_links_for_student(request):
     template = 'docrepo/student/index.html'
 
     records = get_documents(request, 'student')
+    page_title, _ = _headings('student', 'Documents')
 
     return render(
         request,
         template, {
-            'page_title': 'Documents',
+            'page_title': page_title,
             'menu': menu,
             'records': records
             }
